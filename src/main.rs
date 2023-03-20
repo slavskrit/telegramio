@@ -7,8 +7,15 @@ async fn main() {
 
     let bot = Bot::from_env();
 
+    let mut _server = "localhost".to_string();
+
+    match std::env::var("RENDER_EXTERNAL_HOSTNAME").ok() {
+        Some(proxy) => _server = proxy,
+        None => log::info!("No RENDER_EXTERNAL_HOSTNAME env found"),
+    }
+
     teloxide::repl(bot, |bot: Bot, msg: Message| async move {
-        bot.send_message(msg.chat.id, "MAMAMIA").await?;
+        bot.send_message(msg.chat.id, "On server $").await?;
         Ok(())
     })
     .await;
