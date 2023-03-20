@@ -1,1 +1,1 @@
-# Very bizary rust bot
+# Very bizarre rust bot
