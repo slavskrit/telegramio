@@ -1,4 +1,5 @@
-use teloxide::prelude::*;
+use teloxide::{prelude::*, types::InputFile};
+use url::Url;
 
 #[tokio::main]
 async fn main() {
@@ -15,7 +16,16 @@ async fn main() {
     }
 
     teloxide::repl(bot, |bot: Bot, msg: Message| async move {
-        bot.send_message(msg.chat.id, "On server $").await?;
+        let caption = msg.caption().unwrap_or_default();
+        let image_url_str = "https://i.imgur.com/DrblMGp.jpeg";
+        bot.send_photo(
+            msg.chat.id,
+            InputFile::url(Url::parse(image_url_str).unwrap()),
+        )
+        .allow_sending_without_reply(true)
+        .await?;
+        bot.send_message(msg.chat.id, caption).await?;
+
         Ok(())
     })
     .await;
