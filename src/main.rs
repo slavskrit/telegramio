@@ -37,7 +37,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
             let elem = doc
                 .descendants()
                 .filter(|n| n.has_tag_name("title") || n.has_tag_name("thumbnail"))
-                .skip(25);
+                .skip(1);
             for e in elem {
                 let caption_text = e.text().unwrap_or("");
                 let caption = caption_text.clone();
