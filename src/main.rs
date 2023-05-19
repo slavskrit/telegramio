@@ -2,9 +2,7 @@ use teloxide::{prelude::*, types::InputFile, utils::command::BotCommands};
 extern crate reqwest;
 use reqwest::{header::USER_AGENT, Client};
 use roxmltree;
-
-#[cfg(feature = "async")]
-use tokio;
+use url::Url;
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -39,14 +37,26 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
             let elem = doc
                 .descendants()
                 .filter(|n| n.has_tag_name("title") || n.has_tag_name("thumbnail"))
-                .skip(1);
+                .skip(25);
             for e in elem {
-                let message = format!(
-                    "{:?} : {:?}",
-                    e.text().unwrap_or(""),
-                    e.attribute("url").unwrap_or("")
-                );
-                bot.send_message(msg.chat.id, message).await?;
+                let caption_text = e.text().unwrap_or("");
+                let caption = caption_text.clone();
+                let image_url = e.attribute("url");
+                match image_url {
+                    Some(image_url_str) => {
+                        bot.send_photo(
+                            msg.chat.id,
+                            InputFile::url(Url::parse(image_url_str).unwrap()),
+                        )
+                        .parse_mode(teloxide::types::ParseMode::Html)
+                        .caption(format!("{caption}{image_url_str}"))
+                        .disable_notification(true)
+                        .await?;
+                    }
+                    None => {
+                        bot.send_message(msg.chat.id, caption_text).await?;
+                    }
+                }
             }
             bot.send_message(msg.chat.id, "Done!").await?
         }
@@ -63,20 +73,4 @@ async fn main() {
     let bot = Bot::from_env();
 
     Command::repl(bot, answer).await;
-
-    // teloxide::repl(bot, |bot: Bot, msg: Message| async move {
-    //     // msg.chat.
-    //     let caption = msg.caption().unwrap_or_default();
-    //     let image_url_str = "https://i.imgur.com/ENXEU8r.jpeg";
-    //     bot.send_photo(
-    //         msg.chat.id,
-    //         InputFile::url(Url::parse(image_url_str).unwrap()),
-    //     )
-    //     .allow_sending_without_reply(true)
-    //     .await?;
-    //     bot.send_message(msg.chat.id, caption).await?;
-
-    //     Ok(())
-    // })
-    // .await;
 }
