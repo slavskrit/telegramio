@@ -8,6 +8,8 @@ extern crate reqwest;
 
 mod reddit;
 use reddit::reddit_top_records;
+mod anime;
+use anime::anime;
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -21,6 +23,10 @@ enum Command {
     Reddit,
     #[command(description = "return top reddit posts as a gallery")]
     GReddit,
+    #[command(description = "NSFW anime")]
+    NsfwAnime,
+    #[command(description = "SFW anime")]
+    SfwAnime,
 }
 #[cfg_attr(feature = "async", tokio::main)]
 async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
@@ -63,6 +69,22 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 bot.send_media_group(msg.chat.id, chunk.to_vec()).await?;
             }
             bot.send_message(msg.chat.id, format!("{messages_len} posts!"))
+                .await?
+        }
+        Command::nsfw_anime => {
+            let image_url = anime("https://api.waifu.pics/nsfw/waifu").await;
+            bot.send_photo(msg.chat.id, InputFile::url(image_url.clone()))
+                .parse_mode(teloxide::types::ParseMode::Html)
+                .caption(image_url.to_string())
+                .disable_notification(true)
+                .await?
+        }
+        Command::sfw_anime => {
+            let image_url = anime("https://api.waifu.pics/sfw/waifu").await;
+            bot.send_photo(msg.chat.id, InputFile::url(image_url.clone()))
+                .parse_mode(teloxide::types::ParseMode::Html)
+                .caption(image_url.to_string())
+                .disable_notification(true)
                 .await?
         }
     };
