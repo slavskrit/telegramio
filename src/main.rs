@@ -71,7 +71,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
             bot.send_message(msg.chat.id, format!("{messages_len} posts!"))
                 .await?
         }
-        Command::nsfw_anime => {
+        Command::NsfwAnime => {
             let image_url = anime("https://api.waifu.pics/nsfw/waifu").await;
             bot.send_photo(msg.chat.id, InputFile::url(image_url.clone()))
                 .parse_mode(teloxide::types::ParseMode::Html)
@@ -79,7 +79,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 .disable_notification(true)
                 .await?
         }
-        Command::sfw_anime => {
+        Command::SfwAnime => {
             let image_url = anime("https://api.waifu.pics/sfw/waifu").await;
             bot.send_photo(msg.chat.id, InputFile::url(image_url.clone()))
                 .parse_mode(teloxide::types::ParseMode::Html)
