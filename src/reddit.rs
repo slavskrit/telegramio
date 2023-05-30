@@ -1,4 +1,5 @@
 extern crate reqwest;
+
 use reqwest::{header::USER_AGENT, Client};
 use roxmltree;
 use url::Url;
@@ -11,7 +12,7 @@ pub struct MessageWithText {
 
 pub async fn reddit_top_records() -> Result<Vec<MessageWithText>, Vec<bool>> {
     let c = Client::new();
-    let result = c
+    let reddit_xml = c
         .get("http://www.reddit.com/.rss")
         .header(USER_AGENT, "dashboard/0.1")
         .send()
@@ -20,24 +21,32 @@ pub async fn reddit_top_records() -> Result<Vec<MessageWithText>, Vec<bool>> {
         .text()
         .await
         .unwrap();
-    let doc = roxmltree::Document::parse(&result).unwrap();
-    let elem = doc
+    let doc = roxmltree::Document::parse(&reddit_xml).unwrap();
+    let entries = doc
         .descendants()
-        .filter(|n| n.has_tag_name("title") || n.has_tag_name("thumbnail"))
+        .filter(|n| n.tag_name().name() == "entry")
         .skip(1);
     let mut messages_with_text = Vec::new();
-    for e in elem {
-        let caption_text = e.text().unwrap_or("");
-        let caption = caption_text.clone();
-        let image_url = e.attribute("url");
-        match image_url {
-            Some(image_url_str) => {
-                messages_with_text.push(MessageWithText {
-                    caption: String::from(caption),
-                    image_url: Url::parse(image_url_str).unwrap(),
-                });
+    for e in entries {
+        let mut thumbnail = "";
+        let mut link = "";
+        let mut title = "";
+        for k in e.children() {
+            match k.tag_name().name() {
+                "title" => title = k.text().unwrap_or(""),
+                "link" => link = k.attribute("href").unwrap_or_default(),
+                "thumbnail" => thumbnail = k.attribute("url").unwrap_or_default(),
+                _ => log::warn!("something is wrong!"),
             }
-            None => log::info!("No picture -> ignoring {caption}"),
+        }
+        if !thumbnail.is_empty() {
+            match Url::parse(thumbnail) {
+                Ok(url) => messages_with_text.push(MessageWithText {
+                    caption: String::from(format!("<a href='{link}'>{title}</a>")),
+                    image_url: url,
+                }),
+                Err(_) => log::warn!("Url {thumbnail} is broken... proceed "),
+            }
         }
     }
     let len_success_message = messages_with_text.len();
