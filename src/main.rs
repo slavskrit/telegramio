@@ -1,4 +1,9 @@
-use teloxide::{prelude::*, types::InputFile, utils::command::BotCommands};
+use teloxide::{
+    prelude::*,
+    types::InputFile,
+    types::{InputMedia, InputMediaPhoto, ParseMode},
+    utils::command::BotCommands,
+};
 extern crate reqwest;
 
 mod reddit;
@@ -12,8 +17,10 @@ use reddit::reddit_top_records;
 enum Command {
     #[command(description = "display this text.")]
     Help,
-    #[command(description = "return top reddit posts.")]
+    #[command(description = "return top reddit posts with links and descriptions")]
     Reddit,
+    #[command(description = "return top reddit posts as a gallery")]
+    GReddit,
 }
 #[cfg_attr(feature = "async", tokio::main)]
 async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
@@ -22,25 +29,43 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
             bot.send_message(msg.chat.id, Command::descriptions().to_string())
                 .await?
         }
-        Command::Reddit => {
+        Command::GReddit => {
             let messages_with_text = reddit_top_records().await.unwrap_or_default();
             let messages_len = messages_with_text.len();
-            dbg!(&messages_with_text);
             for message in messages_with_text {
                 let caption = message.caption;
                 let image = InputFile::url(message.image_url);
-                log::warn!("Caption... {caption}");
                 bot.send_photo(msg.chat.id, image)
                     .parse_mode(teloxide::types::ParseMode::Html)
                     .caption(caption)
                     .disable_notification(true)
                     .await?;
             }
-            bot.send_message(msg.chat.id, format!("Done with {messages_len} messages."))
+            bot.send_message(msg.chat.id, format!("{messages_len} posts!"))
+                .await?
+        }
+        Command::Reddit => {
+            let messages_with_text = reddit_top_records().await.unwrap_or_default();
+            let messages_len = messages_with_text.len();
+            let input_medias: Vec<InputMedia> = messages_with_text
+                .iter()
+                .map(|message| {
+                    InputMedia::Photo(InputMediaPhoto {
+                        media: InputFile::url(message.image_url.clone()),
+                        parse_mode: Some(ParseMode::Html),
+                        caption: Some(message.caption.clone()),
+                        caption_entities: None,
+                        has_spoiler: false,
+                    })
+                })
+                .collect();
+            for chunk in input_medias.chunks(10) {
+                bot.send_media_group(msg.chat.id, chunk.to_vec()).await?;
+            }
+            bot.send_message(msg.chat.id, format!("{messages_len} posts!"))
                 .await?
         }
     };
-
     Ok(())
 }
 
